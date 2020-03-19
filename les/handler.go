@@ -70,7 +70,7 @@ func errResp(code errCode, format string, v ...interface{}) error {
 }
 
 type BlockChain interface {
-	HasHeader(hash common.Hash, number uint64) bool
+	HasHeader(hash common.Hash) bool
 	GetHeader(hash common.Hash, number uint64) *types.Header
 	GetHeaderByHash(hash common.Hash) *types.Header
 	CurrentHeader() *types.Header
@@ -82,7 +82,6 @@ type BlockChain interface {
 	GetBlockHashesFromHash(hash common.Hash, max uint64) []common.Hash
 	LastBlockHash() common.Hash
 	Genesis() *types.Block
-	SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription
 }
 
 type txPool interface {

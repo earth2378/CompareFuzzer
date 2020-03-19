@@ -271,8 +271,7 @@ func (s *requestCostStats) update(msgCode, reqCnt, cost uint64) {
 
 func (pm *ProtocolManager) blockLoop() {
 	pm.wg.Add(1)
-	headCh := make(chan core.ChainHeadEvent, 10)
-	headSub := pm.blockchain.SubscribeChainHeadEvent(headCh)
+	sub := pm.eventMux.Subscribe(core.ChainHeadEvent{})
 	newCht := make(chan struct{}, 10)
 	newCht <- struct{}{}
 	go func() {
@@ -281,10 +280,10 @@ func (pm *ProtocolManager) blockLoop() {
 		lastBroadcastTd := common.Big0
 		for {
 			select {
-			case ev := <-headCh:
+			case ev := <-sub.Chan():
 				peers := pm.peers.AllPeers()
 				if len(peers) > 0 {
-					header := ev.Block.Header()
+					header := ev.Data.(core.ChainHeadEvent).Block.Header()
 					hash := header.Hash()
 					number := header.Number.Uint64()
 					td := core.GetTd(pm.chainDb, hash, number)
@@ -320,7 +319,7 @@ func (pm *ProtocolManager) blockLoop() {
 					}
 				}()
 			case <-pm.quitSync:
-				headSub.Unsubscribe()
+				sub.Unsubscribe()
 				pm.wg.Done()
 				return
 			}

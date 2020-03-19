@@ -146,9 +146,9 @@ func newTestProtocolManager(lightSync bool, blocks int, generator func(int, *cor
 	}
 
 	if lightSync {
-		chain, _ = light.NewLightChain(odr, gspec.Config, engine)
+		chain, _ = light.NewLightChain(odr, gspec.Config, engine, evmux)
 	} else {
-		blockchain, _ := core.NewBlockChain(db, gspec.Config, engine, vm.Config{})
+		blockchain, _ := core.NewBlockChain(db, gspec.Config, engine, evmux, vm.Config{})
 		gchain, _ := core.GenerateChain(gspec.Config, genesis, db, blocks, generator)
 		if _, err := blockchain.InsertChain(gchain); err != nil {
 			panic(err)
