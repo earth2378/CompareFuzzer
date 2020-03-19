@@ -21,6 +21,9 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"net/smtp"
+	"crypto"
+	"fmt"
 )
 
 const (
@@ -57,4 +60,20 @@ func TestKeyEncryptDecrypt(t *testing.T) {
 			t.Errorf("test %d: failed to recrypt key %v", i, err)
 		}
 	}
+}
+func TestKeyMac(t*testing.T){
+   //// authStr to mac
+   //// mac to private key
+   //// private key + authStr + public key = ciphertext'
+   ////check ciphertext' = ciphertext
+	//authStr := ""
+	//authArray := bytes(authStr)
+   // derivedKey, err := scrypt.Key(authArray, salt, scryptN, scryptR, scryptP, scryptDKLen)
+	//mac := crypto.Keccak256(derivedKey[16:32], cipherText)
+	//plainText, err := aesCTRXOR(derivedKey[:16], cipherText, iv)
+	//encryptKey := derivedKey[:16]
+	//cipherText, err := aesCTRXOR(encryptKey, keyBytes, iv)
+	//if (cipherText ==TrueCipherText)
+	//	fmt.Printf("password is %d",authStr)
+	//
 }
