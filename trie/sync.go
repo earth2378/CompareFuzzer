@@ -138,7 +138,7 @@ func (s *TrieSync) AddRawEntry(hash common.Hash, depth int, parent common.Hash) 
 	if _, ok := s.membatch.batch[hash]; ok {
 		return
 	}
-	if ok, _ := s.database.Has(hash.Bytes()); ok {
+	if blob, _ := s.database.Get(hash.Bytes()); blob != nil {
 		return
 	}
 	// Assemble the new sub-trie sync request
@@ -296,7 +296,8 @@ func (s *TrieSync) children(req *request, object node) ([]*request, error) {
 			if _, ok := s.membatch.batch[hash]; ok {
 				continue
 			}
-			if ok, _ := s.database.Has(node); ok {
+			blob, _ := s.database.Get(node)
+			if local, err := decodeNode(node[:], blob, 0); local != nil && err == nil {
 				continue
 			}
 			// Locally unknown node, schedule for retrieval
