@@ -59,6 +59,7 @@ type DPA struct {
 
 	lock    sync.Mutex
 	running bool
+	wg      *sync.WaitGroup
 	quitC   chan bool
 }
 
@@ -238,4 +239,6 @@ func (self *dpaChunkStore) Put(entry *Chunk) {
 }
 
 // Close chunk store
-func (self *dpaChunkStore) Close() {}
+func (self *dpaChunkStore) Close() {
+	return
+}

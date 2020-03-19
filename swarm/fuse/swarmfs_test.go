@@ -140,7 +140,7 @@ func compareGeneratedFileWithFileInMount(t *testing.T, files map[string]fileInfo
 		if err != nil {
 			t.Fatalf("Could not readfile %v : %v", fname, err)
 		}
-		if !bytes.Equal(fileContents, finfo.contents) {
+		if bytes.Compare(fileContents, finfo.contents) != 0 {
 			t.Fatalf("File %v contents mismatch: %v , %v", fname, fileContents, finfo.contents)
 
 		}

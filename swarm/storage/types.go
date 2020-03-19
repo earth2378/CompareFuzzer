@@ -24,7 +24,6 @@ import (
 	"io"
 	"sync"
 
-	// "github.com/ethereum/go-ethereum/bmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 )

@@ -178,9 +178,10 @@ func (self *PyramidChunker) processor(pend, swg *sync.WaitGroup, tasks chan *Tas
 				if swg != nil {
 					swg.Add(1)
 				}
-
-				chunkC <- &Chunk{Key: hash, SData: data, wg: swg}
-				// TODO: consider selecting on self.quitC to avoid blocking forever on shutdown
+				select {
+				case chunkC <- &Chunk{Key: hash, SData: data, wg: swg}:
+					// case <- self.quitC
+				}
 			}
 			if depth+1 < len(results.Levels) {
 				delete(results.Levels[depth+1], task.Index/(pow/self.branches))

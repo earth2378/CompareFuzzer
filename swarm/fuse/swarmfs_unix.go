@@ -59,6 +59,14 @@ type MountInfo struct {
 	lock           *sync.RWMutex
 }
 
+// Inode numbers need to be unique, they are used for caching inside fuse
+func newInode() uint64 {
+	inodeLock.Lock()
+	defer inodeLock.Unlock()
+	inode += 1
+	return inode
+}
+
 func NewMountInfo(mhash, mpoint string, sapi *api.Api) *MountInfo {
 	newMountInfo := &MountInfo{
 		MountPoint:     mpoint,
@@ -95,7 +103,7 @@ func (self *SwarmFS) Mount(mhash, mountpoint string) (*MountInfo, error) {
 	}
 
 	log.Info(fmt.Sprintf("Attempting to mount %s ", cleanedMountPoint))
-	_, manifestEntryMap, err := self.swarmApi.BuildDirectoryTree(mhash, true)
+	key, manifestEntryMap, err := self.swarmApi.BuildDirectoryTree(mhash, true)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +116,8 @@ func (self *SwarmFS) Mount(mhash, mountpoint string) (*MountInfo, error) {
 	mi.rootDir = rootDir
 
 	for suffix, entry := range manifestEntryMap {
-		key := common.Hex2Bytes(entry.Hash)
+
+		key = common.Hex2Bytes(entry.Hash)
 		fullpath := "/" + suffix
 		basepath := filepath.Dir(fullpath)
 
