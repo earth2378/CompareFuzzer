@@ -150,7 +150,8 @@ type Block struct {
 	td *big.Int
 
 	// These fields are used by package eth to track
-	// inter-peer block relay.
+	// inter-peer block relay.  ##relay similiar to transfer
+
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
 }
