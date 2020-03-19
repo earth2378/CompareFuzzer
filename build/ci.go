@@ -176,7 +176,10 @@ func doInstall(cmdline []string) {
 
 	// Check Go version. People regularly open issues about compilation
 	// failure with outdated Go. This should save them the trouble.
-	if runtime.Version() < "go1.7" && !strings.Contains(runtime.Version(), "devel") {
+	var verCount = len([]byte(runtime.Version()))
+	var oldCount = len([]byte("go1.7"))
+	log.Println(runtime.Version())
+	if ((verCount==oldCount&&runtime.Version() < "go1.7")||verCount<oldCount) && !strings.Contains(runtime.Version(), "devel") {
 		log.Println("You have Go version", runtime.Version())
 		log.Println("go-ethereum requires at least Go version 1.7 and cannot")
 		log.Println("be compiled with an earlier version. Please upgrade your Go installation.")
