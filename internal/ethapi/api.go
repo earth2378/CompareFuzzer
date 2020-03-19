@@ -230,43 +230,20 @@ func (s *PrivateAccountAPI) ListAccounts() []common.Address {
 type rawWallet struct {
 	URL      string             `json:"url"`
 	Status   string             `json:"status"`
-	Failure  string             `json:"failure,omitempty"`
-	Accounts []accounts.Account `json:"accounts,omitempty"`
+	Accounts []accounts.Account `json:"accounts"`
 }
 
 // ListWallets will return a list of wallets this node manages.
 func (s *PrivateAccountAPI) ListWallets() []rawWallet {
 	wallets := make([]rawWallet, 0) // return [] instead of nil if empty
 	for _, wallet := range s.am.Wallets() {
-		status, failure := wallet.Status()
-
-		raw := rawWallet{
+		wallets = append(wallets, rawWallet{
 			URL:      wallet.URL().String(),
-			Status:   status,
+			Status:   wallet.Status(),
 			Accounts: wallet.Accounts(),
-		}
-		if failure != nil {
-			raw.Failure = failure.Error()
-		}
-		wallets = append(wallets, raw)
+		})
 	}
 	return wallets
-}
-
-// OpenWallet initiates a hardware wallet opening procedure, establishing a USB
-// connection and attempting to authenticate via the provided passphrase. Note,
-// the method may return an extra challenge requiring a second open (e.g. the
-// Trezor PIN matrix challenge).
-func (s *PrivateAccountAPI) OpenWallet(url string, passphrase *string) error {
-	wallet, err := s.am.Wallet(url)
-	if err != nil {
-		return err
-	}
-	pass := ""
-	if passphrase != nil {
-		pass = *passphrase
-	}
-	return wallet.Open(pass)
 }
 
 // DeriveAccount requests a HD wallet to derive a new account, optionally pinning
@@ -635,8 +612,7 @@ func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr
 	// Setup the gas pool (also for unmetered requests)
 	// and apply the message.
 	gp := new(core.GasPool).AddGas(math.MaxBig256)
-	// TODO utilize failed flag to help gas estimation
-	res, gas, _, err := core.ApplyMessage(evm, msg, gp)
+	res, gas, err := core.ApplyMessage(evm, msg, gp)
 	if err := vmError(); err != nil {
 		return nil, common.Big0, err
 	}
@@ -1265,6 +1241,7 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs SendTxAr
 			if err != nil {
 				return common.Hash{}, err
 			}
+			s.b.RemoveTx(p.Hash())
 			if err = s.b.SendTx(ctx, signedTx); err != nil {
 				return common.Hash{}, err
 			}
