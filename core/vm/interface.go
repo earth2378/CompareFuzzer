@@ -1,3 +1,9 @@
+/**
+*   @Append [GetNextRevisionId] to interface [StateDB] for anaylyzing revert status.
+*    which implemented in [../state/statedb.go line:495-512]
+*    by liuye 2017.11.3
+**/
+
 // Copyright 2016 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
@@ -56,6 +62,7 @@ type StateDB interface {
 	Empty(common.Address) bool
 
 	RevertToSnapshot(int)
+	GetNextRevisionId() int
 	Snapshot() int
 
 	AddLog(*types.Log)
