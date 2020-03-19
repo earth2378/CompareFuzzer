@@ -44,27 +44,9 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const (
-	// historyUpdateRange is the number of blocks a node should report upon login or
-	// history request.
-	historyUpdateRange = 50
-
-	// txChanSize is the size of channel listening to TxPreEvent.
-	// The number is referenced from the size of tx pool.
-	txChanSize = 4096
-	// chainHeadChanSize is the size of channel listening to ChainHeadEvent.
-	chainHeadChanSize = 10
-)
-
-type txPool interface {
-	// SubscribeTxPreEvent should return an event subscription of
-	// TxPreEvent and send events to the given channel.
-	SubscribeTxPreEvent(chan<- core.TxPreEvent) event.Subscription
-}
-
-type blockChain interface {
-	SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription
-}
+// historyUpdateRange is the number of blocks a node should report upon login or
+// history request.
+const historyUpdateRange = 50
 
 // Service implements an Ethereum netstats reporting daemon that pushes local
 // chain statistics up to a monitoring server.
@@ -136,22 +118,16 @@ func (s *Service) Stop() error {
 // until termination.
 func (s *Service) loop() {
 	// Subscribe to chain events to execute updates on
-	var blockchain blockChain
-	var txpool txPool
+	var emux *event.TypeMux
 	if s.eth != nil {
-		blockchain = s.eth.BlockChain()
-		txpool = s.eth.TxPool()
+		emux = s.eth.EventMux()
 	} else {
-		blockchain = s.les.BlockChain()
-		txpool = s.les.TxPool()
+		emux = s.les.EventMux()
 	}
-
-	chainHeadCh := make(chan core.ChainHeadEvent, chainHeadChanSize)
-	headSub := blockchain.SubscribeChainHeadEvent(chainHeadCh)
+	headSub := emux.Subscribe(core.ChainHeadEvent{})
 	defer headSub.Unsubscribe()
 
-	txEventCh := make(chan core.TxPreEvent, txChanSize)
-	txSub := txpool.SubscribeTxPreEvent(txEventCh)
+	txSub := emux.Subscribe(core.TxPreEvent{})
 	defer txSub.Unsubscribe()
 
 	// Start a goroutine that exhausts the subsciptions to avoid events piling up
@@ -163,18 +139,25 @@ func (s *Service) loop() {
 	go func() {
 		var lastTx mclock.AbsTime
 
-	HandleLoop:
 		for {
 			select {
 			// Notify of chain head events, but drop if too frequent
-			case head := <-chainHeadCh:
+			case head, ok := <-headSub.Chan():
+				if !ok { // node stopped
+					close(quitCh)
+					return
+				}
 				select {
-				case headCh <- head.Block:
+				case headCh <- head.Data.(core.ChainHeadEvent).Block:
 				default:
 				}
 
 			// Notify of new transaction events, but drop if too frequent
-			case <-txEventCh:
+			case _, ok := <-txSub.Chan():
+				if !ok { // node stopped
+					close(quitCh)
+					return
+				}
 				if time.Duration(mclock.Now()-lastTx) < time.Second {
 					continue
 				}
@@ -184,16 +167,8 @@ func (s *Service) loop() {
 				case txCh <- struct{}{}:
 				default:
 				}
-
-			// node stopped
-			case <-txSub.Err():
-				break HandleLoop
-			case <-headSub.Err():
-				break HandleLoop
 			}
 		}
-		close(quitCh)
-		return
 	}()
 	// Loop reporting until termination
 	for {
