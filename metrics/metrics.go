@@ -29,7 +29,7 @@ import (
 )
 
 // MetricsEnabledFlag is the CLI flag name to use to enable metrics collections.
-const MetricsEnabledFlag = "metrics"
+var MetricsEnabledFlag = "metrics"
 
 // Enabled is the flag specifying if metrics are enable or not.
 var Enabled = false
