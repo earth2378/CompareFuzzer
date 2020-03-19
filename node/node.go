@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -33,7 +34,16 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/prometheus/prometheus/util/flock"
+	"github.com/syndtr/goleveldb/leveldb/storage"
+)
+
+var (
+	ErrDatadirUsed    = errors.New("datadir already used")
+	ErrNodeStopped    = errors.New("node not started")
+	ErrNodeRunning    = errors.New("node already running")
+	ErrServiceUnknown = errors.New("unknown service")
+
+	datadirInUseErrnos = map[uint]bool{11: true, 32: true, 35: true}
 )
 
 // Node is a container on which services can be registered.
@@ -42,8 +52,8 @@ type Node struct {
 	config   *Config
 	accman   *accounts.Manager
 
-	ephemeralKeystore string         // if non-empty, the key directory that will be removed by Stop
-	instanceDirLock   flock.Releaser // prevents concurrent use of instance directory
+	ephemeralKeystore string          // if non-empty, the key directory that will be removed by Stop
+	instanceDirLock   storage.Storage // prevents concurrent use of instance directory
 
 	serverConfig p2p.Config
 	server       *p2p.Server // Currently running P2P networking layer
@@ -187,7 +197,10 @@ func (n *Node) Start() error {
 		running.Protocols = append(running.Protocols, service.Protocols()...)
 	}
 	if err := running.Start(); err != nil {
-		return convertFileLockError(err)
+		if errno, ok := err.(syscall.Errno); ok && datadirInUseErrnos[uint(errno)] {
+			return ErrDatadirUsed
+		}
+		return err
 	}
 	// Start each of the services
 	started := []reflect.Type{}
@@ -229,13 +242,14 @@ func (n *Node) openDataDir() error {
 	if err := os.MkdirAll(instdir, 0700); err != nil {
 		return err
 	}
-	// Lock the instance directory to prevent concurrent use by another instance as well as
-	// accidental use of the instance directory as a database.
-	release, _, err := flock.New(filepath.Join(instdir, "LOCK"))
+	// Try to open the instance directory as LevelDB storage. This creates a lock file
+	// which prevents concurrent use by another instance as well as accidental use of the
+	// instance directory as a database.
+	storage, err := storage.OpenFile(instdir, true)
 	if err != nil {
-		return convertFileLockError(err)
+		return err
 	}
-	n.instanceDirLock = release
+	n.instanceDirLock = storage
 	return nil
 }
 
@@ -495,9 +509,7 @@ func (n *Node) Stop() error {
 
 	// Release instance directory lock.
 	if n.instanceDirLock != nil {
-		if err := n.instanceDirLock.Release(); err != nil {
-			log.Error("Can't release datadir lock", "err", err)
-		}
+		n.instanceDirLock.Close()
 		n.instanceDirLock = nil
 	}
 
