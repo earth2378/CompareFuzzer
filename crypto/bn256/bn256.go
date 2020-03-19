@@ -379,22 +379,16 @@ func Pair(g1 *G1, g2 *G2) *GT {
 	return &GT{optimalAte(g2.p, g1.p, new(bnPool))}
 }
 
-// PairingCheck calculates the Optimal Ate pairing for a set of points.
 func PairingCheck(a []*G1, b []*G2) bool {
 	pool := new(bnPool)
-
-	acc := newGFp12(pool)
-	acc.SetOne()
-
+	e := newGFp12(pool)
+	e.SetOne()
 	for i := 0; i < len(a); i++ {
-		if a[i].p.IsInfinity() || b[i].p.IsInfinity() {
-			continue
-		}
-		acc.Mul(acc, miller(b[i].p, a[i].p, pool), pool)
+		new_e := miller(b[i].p, a[i].p, pool)
+		e.Mul(e, new_e, pool)
 	}
-	ret := finalExponentiation(acc, pool)
-	acc.Put(pool)
-
+	ret := finalExponentiation(e, pool)
+	e.Put(pool)
 	return ret.IsOne()
 }
 
